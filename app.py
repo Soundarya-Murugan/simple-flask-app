@@ -1,77 +1,71 @@
-'''
-Created on
-
-@author: Soundarya
-
-source:
-
-
-    http://127.0.0.1:5000/reverse?name=Raji
-'''
-
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, session, redirect, request, render_template, url_for
+import secrets 
+from datetime import timedelta
 
 
 app = Flask(__name__)
 
-@app.route("/")
-def home():
+# app.secret_key  = os.getenv("SECREATE_KEY")
+app.secret_key = secrets.token_hex(10)
+# print (f"secret : {secrets.token_hex(10)}")
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes = 1)
 
-    name = "Toronto"
-    r_name = name[::-1]
-
-    return f"Welcome to Toronto {r_name}"
-
-@app.route("/reverse")
-def reverse_name():
-
-    name = request.values.get("name")
-    r_name = name[::-1]
-
-    return f"Your name is: {name}, your reverse name is: {r_name}"
-
-@app.route("/user")
-def get_user_details():
-
-    name    = request.values.get("name")
-    age     = request.values.get("age")
-
-    return f"Your name is: {name}, your age is {age}"
-
-# @app.route("/voting/eligibility")
-# def get_voting_eligibility():
-
-#     age     = int(request.values.get("age"))
-
-#     content = ""
-#     if age > 18:
-#         content = "You are eligible to vote"
-#     else:
-#         content = "You are not eligible to vote"
-
-#     return content
-
-@app.route("/country", methods=["GET", "POST"])
-def country():
-    country = None
-    capital = None
-    error = None
-
-    if request.method == "GET":
-        country = request.args.get("country")
-        
-        if country:
-            capitals = {
-                'France'  : 'Paris',
-                'Germany' : 'Berlin',
-                'India'   : 'New Delhi'
-            }
-
-            capital = capitals.get(country)
-            if not capital:
-                error = "Country not found"
+@app.route('/', methods=['GET', 'POST'])
+def login_page():
     
-    return render_template("login.html", country=country, capital=capital, error=error)
+    if request.method == "POST":
+        username = request.values.get("username")
+        gender   = request.values.get("gender")
+        age      = request.values.get("age")
+    
+        session['name']     = username
+        session["age"]      = age
+        session["gender"]   = gender
+    
+        return redirect(url_for("home"))
 
-if __name__ == "__main__":
-    app.run(debug=True)
+    return render_template("login.html")
+
+@app.route('/welcome', methods=['GET', 'POST'])
+def home():
+    
+    name = session.get("name")
+    
+    # age = session.get("age")
+    
+    print(f'session detils : {session}')
+
+    return render_template(
+        "welcome.html", 
+        
+        username=name
+        )
+    
+@app.route('/get-user', methods=['GET'])
+def get_user_details():
+    
+    user_dict = {
+        "username": session.get("name"),
+        "gender"  : session.get("gender"),
+        "age"     : session.get("age")
+    }
+    
+    return render_template(
+        "user_details.html",
+        
+        user = user_dict,
+        )
+    
+
+@app.route('/logout')
+def session_logout():
+    session.clear()
+    return redirect(url_for("login_page"))
+
+
+
+if __name__ == '__main__':
+    app.run(
+        debug=True, 
+        port=4008
+        )
